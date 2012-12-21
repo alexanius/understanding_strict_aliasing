@@ -47,5 +47,31 @@ foo(anint,anint);
 Внутри тела функции, после того как мы использовали anint в качестве обоих аргументов, есть две ссылки, i1 и i2 alias'а
 т.е. ссылки на одну область памяти когда функция вызывается таким образом.
 
+В чём проблема?
+
+Проверим следующий код:
+int anint;
+void foo(double *dblptr)
+{
+  anint=1;
+  *dblptr=3.14159;
+  bar(anint);
+}
+
+Если посмотреть на пример, кажется безопасным предполагать что аргумент bar() - константа, равная 1. В старые добрые
+деньки создатели компиляторов должны были исходить из худшего предположения о перекрывающем присваивании чтобы
+поддердивать огромное количество унаследованного кода с дикого запада. Они не могли сказать что было бы безопасно
+предполагать что аргумент bar был 1. Они должны были вставлять код для повторной выгрузки значения anint для вызова
+функции потому что промежуточное присваивание через dblptr могло изменить значение anint, если бы dblptr указывал на
+неё. Возможно, что вызов выглядел как foo((double *) &anint).
+
+Именно эту проблему призван решить strict aliasing. Перед создателями оптимизирующих компиляторов был низко весящий
+фрукт, и они хотели заставить программистов следовать правилам перекрытия объектов в памяти чтобы его сорвать.
+Перекрытие и проблемы к которым оно приводит существуют столько, сколько существует язык C.
+
+The difference lately, is that compiler writers are being strict about the rules and enforcing them when optimization is in effect. In their respective standards, C and C++ include lists of the things that can legitimately alias, (see the next section), and in all other cases, compiler writers are allowed to assume no interactions between lvalues. Anything not on the list can be assumed to not alias, and compiler writers are free to do optimizations that make that assumption. For anything on the list, aliasing could possibly occur and compiler writers have to assume that it does. When compiler writers follow these lists, and assume that your code follows the rules, it's called strict-aliasing. Under strict aliasing, the compiler writer is free to optimize the function foo above because incompatible types,double and int, can't alias. That means that if you do call foo as foo((double *)&anint) something will go quickly wrong, but you get what you deserve.
+
+
+
 (*) Примечание: в gcc термин `strict aliasing' переводится как <<правила перекрытия объектов в памяти>>.
 Т.к. это довольно длинная формулировка, в статье иногда будет использоваться оригинальный термин.
